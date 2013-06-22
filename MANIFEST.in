@@ -1,0 +1,5 @@
+include README.rst
+include requirements.pip
+include twisted/plugins/malva_plugin.py
+recursive-include malva *.py
+graft twisted

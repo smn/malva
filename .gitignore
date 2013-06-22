@@ -34,3 +34,7 @@ nosetests.xml
 .project
 .pydevproject
 /ve/
+*.cache
+_trial_temp
+*.log
+*.pid
