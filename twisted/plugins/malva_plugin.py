@@ -54,12 +54,15 @@ class MalvaServiceMaker(object):
     def probe_modems(self, options):
 
         def do_probe(srvc):
-            mb = ModemProbe()
+            mb = ModemProbe(options['verbose'])
             return mb.probe_ports()
 
         def list_results(results):
-            for status, result in results:
-                print status, result
+            for success, result in results:
+                if success:
+                    log.msg(
+                        "Port: %s, IMSI: %s, Manufacturer info: %s" % result)
+            reactor.stop()
 
         service = OneShotService()
         service.onStart.addCallback(do_probe)
