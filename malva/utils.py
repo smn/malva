@@ -9,6 +9,8 @@ from serial.tools import list_ports
 
 class ModemProbe(object):
 
+    protocol = txgsm.TxGSMProtocol
+
     def __init__(self, verbose):
         self.verbose = verbose
 
@@ -16,27 +18,26 @@ class ModemProbe(object):
         return list_ports.comports()
 
     def probe_ports(self, timeout=2):
-        dl = [self.probe_port(port, timeout) for port, _, _ in self.available_ports()]
+        dl = [self.probe_port(port, timeout)
+              for port, _, _ in self.available_ports()]
         return DeferredList(dl, consumeErrors=True)
 
+    def setup_protocol(self, port):
+        # separate function for easier stubbing in a test
+        proto = self.protocol()
+        proto.verbose = self.verbose
+        SerialPort(proto, port, reactor)
+        return proto
+
     def probe_port(self, port, timeout):
-
-        def setup_protocol(port):
-            protocol = txgsm.TxGSMProtocol()
-            protocol.verbose = self.verbose
-            SerialPort(protocol, port, reactor)
-            return protocol
-
-        def do_probe(modem):
-            return modem.probe()
 
         def get_results(probe_result):
             (_, imsi, _, manufacturer, _) = probe_result
             return (port, imsi, manufacturer)
 
         d = Deferred()
-        d.addCallback(setup_protocol)
-        d.addCallback(do_probe)
+        d.addCallback(self.setup_protocol)
+        d.addCallback(lambda modem: modem.probe())
         d.addCallback(get_results)
         reactor.callLater(0, d.callback, port)
         reactor.callLater(timeout, d.cancel)
