@@ -45,12 +45,25 @@ class MalvaUtilTestCase(TestCase):
         return d
 
     def handle_dialogue(self, modem, transport, dialogue):
-        for expected, responses in dialogue:
-            command = filter(None, transport.value().split(modem.delimiter))
-            self.assertEqual(command, [expected])
-            transport.clear()
-            for response in responses:
-                modem.dataReceived(response + modem.delimiter)
+
+        d = Deferred()
+
+        def check_for_input():
+            if not transport.value():
+                reactor.callLater(0, check_for_input)
+                return
+
+            for expected, responses in dialogue:
+                command = filter(None, transport.value().split(modem.delimiter))
+                self.assertEqual(command, [expected])
+                transport.clear()
+                for response in responses:
+                    modem.dataReceived(response + modem.delimiter)
+
+            d.callback(True)
+
+        check_for_input()
+        return d
 
     @inlineCallbacks
     def test_probing(self):
@@ -61,13 +74,13 @@ class MalvaUtilTestCase(TestCase):
         ok_modem, ok_transport = yield self.wait_for_connection('/dev/ok')
         bad_modem, bad_transport = yield self.wait_for_connection('/dev/bad')
 
-        self.handle_dialogue(ok_modem, ok_transport, [
+        yield self.handle_dialogue(ok_modem, ok_transport, [
             ('ATE0', ['OK']),
             ('AT+CIMI', ['1234567890', 'OK']),
             ('AT+CGMM', ['FOO CORP', 'OK']),
         ])
 
-        self.handle_dialogue(bad_modem, bad_transport, [
+        yield self.handle_dialogue(bad_modem, bad_transport, [
             ('ATE0', ['FOO']),
         ])
 
