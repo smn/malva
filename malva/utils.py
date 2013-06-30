@@ -1,5 +1,7 @@
+# -*- test-case-name: malva.tests.test_utils -*-
+
 from twisted.internet.serialport import SerialPort
-from twisted.internet.defer import DeferredList, Deferred, CancelledError
+from twisted.internet.defer import DeferredList, Deferred
 from twisted.internet import reactor
 
 from txgsm import txgsm
@@ -10,6 +12,7 @@ from serial.tools import list_ports
 class ModemProbe(object):
 
     protocol = txgsm.TxGSMProtocol
+    serial_port_class = SerialPort
 
     def __init__(self, verbose):
         self.verbose = verbose
@@ -26,7 +29,7 @@ class ModemProbe(object):
         # separate function for easier stubbing in a test
         proto = self.protocol()
         proto.verbose = self.verbose
-        SerialPort(proto, port, reactor)
+        self.serial_port_class(proto, port, reactor)
         return proto
 
     def probe_port(self, port, timeout):
