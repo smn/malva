@@ -54,7 +54,10 @@ class MalvaUtilTestCase(TestCase):
 
     @inlineCallbacks
     def test_probing(self):
-        modem_probe = self.modem_probe.probe_ports(timeout=0.01)
+        # the time-out here is likely going to cause random test failures
+        # because of CPU time differences per platform the tests are run on.
+        # The fix is to fiddle with mocking the reactor's clock.
+        modem_probe = self.modem_probe.probe_ports(timeout=0.1)
         ok_modem, ok_transport = yield self.wait_for_connection('/dev/ok')
         bad_modem, bad_transport = yield self.wait_for_connection('/dev/bad')
 
