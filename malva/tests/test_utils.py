@@ -1,10 +1,11 @@
 from twisted.trial.unittest import TestCase
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, succeed, fail, Deferred
+from twisted.internet.defer import inlineCallbacks, succeed, Deferred
 from twisted.test import proto_helpers
-from twisted.python import log
 
 from malva.utils import ModemProbe
+
+from serial.tools import list_ports
 
 
 class MalvaUtilTestCase(TestCase):
@@ -12,7 +13,7 @@ class MalvaUtilTestCase(TestCase):
     verbose = True
 
     def setUp(self):
-        self.patch(ModemProbe, 'available_ports', lambda _: [
+        self.patch(list_ports, 'comports', lambda: [
             # device, description, hardware-id
             ('/dev/ok', 'OK Modem', 'HARWARE_ID'),
             ('/dev/bad', 'Bad Modem', 'HARWARE_ID'),
