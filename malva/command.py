@@ -1,7 +1,8 @@
 import json
 
 from twisted.python import log
-from twisted.internet.defer import Deferred, succeed
+from twisted.internet.defer import (Deferred, succeed, inlineCallbacks,
+                                    returnValue)
 from twisted.internet import reactor
 
 from txgsm.utils import quote
@@ -125,3 +126,15 @@ class MalvaCommand(object):
     def parse(cls, json_data):
         data = json.loads(json_data)
         return cls(**data)
+
+
+class CommandRunner(object):
+
+    @inlineCallbacks
+    def run(self, modem, command):
+        history = []
+        for step in command.steps:
+            res = yield step.run(modem, history)
+            if res:
+                history.extend([res])
+        returnValue(history)

@@ -43,7 +43,7 @@ class ModemProbe(object):
         d.addCallback(get_results)
         return d
 
-    def get_modems(self):
+    def get_modems(self, timeout=2):
         dl = [self.get_modem(port, timeout)
               for port, _, _ in self.available_ports()]
         return DeferredList(dl, consumeErrors=True)

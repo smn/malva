@@ -1,13 +1,11 @@
 import os
 import pkg_resources
 
-from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from txgsm.tests.base import TxGSMBaseTestCase
 
-from malva.command import MalvaCommand
-from malva.malva import CommandRunner
+from malva.command import MalvaCommand, CommandRunner
 
 
 class MalvaBaseTestCase(TxGSMBaseTestCase):
