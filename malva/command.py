@@ -1,7 +1,7 @@
 import json
 
 from twisted.python import log
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, succeed
 from twisted.internet import reactor
 
 from txgsm.utils import quote
@@ -13,7 +13,11 @@ class CommandException(Exception):
 
 class MalvaAction(object):
 
+    ENCODING = 'utf-8'
+
     def __init__(self, value):
+        if isinstance(value, unicode):
+            value = value.encode(self.ENCODING)
         self.value = value
 
     def run(self, modem, history):
@@ -22,10 +26,8 @@ class MalvaAction(object):
 
         :param modem txgsm.TxGSMProtocol:
             The modem we're connected to.
-        :param history dict:
-            The full history commands sent & received from the modem.
-            {'sent': [], 'received': []}
-
+        :param history list:
+            The full history of responses received from the modem
         """
         raise NotImplementedError
 
@@ -38,15 +40,29 @@ class DialAction(MalvaAction):
 
 class ExpectAction(MalvaAction):
 
+    def is_ussd_resp(self, cmd):
+        return cmd.startswith('+CUSD:')
+
     def run(self, modem, history):
-        pass
+        cmd_history = history[-1]['response']
+        ussd_responses = [cmd for cmd in cmd_history
+                          if self.is_ussd_resp(cmd)]
+        if not ussd_responses:
+            raise CommandException('No USSD responses found in history.')
+        last_resp = ussd_responses[-1]
+
+        if self.value in last_resp:
+            return succeed(None)
+
+        return fail(CommandException('Did not find %s in %s' % (
+            self.value, self.history)))
 
 
 class SleepAction(MalvaAction):
 
     def run(self, modem, history):
-        d = Deferred
-        reactor.callLater(float(self.value), d.callback, modem, history)
+        d = Deferred()
+        reactor.callLater(float(self.value), d.callback, None)
         return d
 
 
@@ -58,7 +74,8 @@ class ReplyAction(MalvaAction):
 
 class CancelAction(MalvaAction):
     def run(self, modem, history):
-        return modem.loseConnection()
+        modem.transport.loseConnection()
+        return succeed(None)
 
 
 class MalvaCommand(object):

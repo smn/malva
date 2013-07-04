@@ -14,6 +14,12 @@ class ProbeModems(usage.Options):
     pass
 
 
+class RunCommand(usage.Options):
+    optParams = [
+        ['file', 'f', None, 'The JSON file.'],
+    ]
+
+
 class Options(usage.Options):
 
     optFlags = [
@@ -23,6 +29,8 @@ class Options(usage.Options):
     subCommands = [
         ['probe-modems', None, ProbeModems,
             "Probe serial ports for things that look like a modem."],
+        ['run-command', None, RunCommand,
+            'Run a Custard command read from a JSON file.'],
     ]
 
 
@@ -43,6 +51,7 @@ class MalvaServiceMaker(object):
     def makeService(self, options):
         dispatch = {
             'probe-modems': self.probe_modems,
+            'run-command': self.run_command,
         }
 
         callback = dispatch.get(options.subCommand)
@@ -67,6 +76,17 @@ class MalvaServiceMaker(object):
         service = OneShotService()
         service.onStart.addCallback(do_probe)
         service.onStart.addCallback(list_results)
+        return service
+
+    def run_command(self, options):
+
+        def find_modems(srvc):
+            md = ModemProbe(options['verbose'])
+            return mb.get_modems()
+
+        service = OneShotService()
+        service.onStart.addCallback(find_modems)
+        service.onStart.addCallback(print_results)
         return service
 
 serviceMaker = MalvaServiceMaker()

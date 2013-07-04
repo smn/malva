@@ -38,10 +38,19 @@ class ModemProbe(object):
             (_, imsi, _, manufacturer, _) = probe_result
             return (port, imsi, manufacturer)
 
-        d = Deferred()
-        d.addCallback(self.setup_protocol)
+        d = self.get_modem(port, timeout)
         d.addCallback(lambda modem: modem.probe())
         d.addCallback(get_results)
-        reactor.callLater(0, d.callback, port)
+        return d
+
+    def get_modems(self):
+        dl = [self.get_modem(port, timeout)
+              for port, _, _ in self.available_ports()]
+        return DeferredList(dl, consumeErrors=True)
+
+    def get_modem(self, port, timeout):
+        d = Deferred()
+        d.addCallback(self.setup_protocol)
         reactor.callLater(timeout, d.cancel)
+        reactor.callLater(0, d.callback, port)
         return d

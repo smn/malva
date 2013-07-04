@@ -1,18 +1,16 @@
 import os
 import pkg_resources
 
-from twisted.trial.unittest import TestCase
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+
+from txgsm.tests.base import TxGSMBaseTestCase
 
 from malva.command import MalvaCommand
+from malva.malva import CommandRunner
 
 
-class MalvaTestCase(TestCase):
-
-    def test_is_it_delicious(self):
-        self.assertTrue('generally yes')
-
-
-class CustardTestCase(TestCase):
+class MalvaBaseTestCase(TxGSMBaseTestCase):
 
     def get_fixture(self, fn):
         fx_path = pkg_resources.resource_filename(
@@ -20,6 +18,45 @@ class CustardTestCase(TestCase):
         with open(fx_path, 'r') as fp:
             data = fp.read()
         return data
+
+
+class MalvaTestCase(MalvaBaseTestCase):
+
+    timeout = 1
+
+    @inlineCallbacks
+    def test_eat_custard(self):
+        command = MalvaCommand.parse(self.get_fixture('fnb_script.json'))
+        runner = CommandRunner()
+        self.modem.verbose = True
+        d = runner.run(self.modem, command)
+        yield self.assertExchange(
+            ['AT+CUSD=1,"*120*321#",15'],
+            ['OK', '+CUSD: 1,"Something FNB bla bla FRB!",255'])
+        yield self.assertExchange(
+            ['AT+CUSD=1,"1",15'],
+            ['OK', '+CUSD: 1,"Something with Cellphone number",255'])
+        log = yield d
+        self.assertEqual(log, [
+            {
+                'command': ['AT+CUSD=1,"*120*321#",15'],
+                'expect': '+CUSD',
+                'response': [
+                    'OK',
+                    '+CUSD: 1,"Something FNB bla bla FRB!",255'
+                ]
+            }, {
+                'command': ['AT+CUSD=1,"1",15'],
+                'expect': '+CUSD',
+                'response': [
+                    'OK',
+                    '+CUSD: 1,"Something with Cellphone number",255'
+                ]
+            }
+        ])
+
+
+class CustardTestCase(MalvaBaseTestCase):
 
     def test_parse_json(self):
         mc = MalvaCommand.parse(self.get_fixture('fnb_script.json'))
