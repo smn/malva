@@ -94,7 +94,8 @@ class MalvaServiceMaker(object):
 
         def start_node(modems):
             log.msg('Found %s modems.' % (len(modems,)))
-            endpoint = serverFromString(reactor, options.subOptions['endpoint'])
+            endpoint = serverFromString(reactor,
+                                        options.subOptions['endpoint'])
             factory = server.Site(
                 CustardResource(modems, verbose=options['verbose']))
             endpoint.listen(factory)
