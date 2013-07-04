@@ -74,8 +74,7 @@ class ReplyAction(MalvaAction):
 
 class CancelAction(MalvaAction):
     def run(self, modem, history):
-        modem.transport.loseConnection()
-        return succeed(None)
+        return modem.send_command('AT+CUSD=2')
 
 
 class MalvaCommand(object):

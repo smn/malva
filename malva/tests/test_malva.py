@@ -30,12 +30,16 @@ class MalvaTestCase(MalvaBaseTestCase):
         runner = CommandRunner()
         self.modem.verbose = True
         d = runner.run(self.modem, command)
+        # dial in
         yield self.assertExchange(
             ['AT+CUSD=1,"*120*321#",15'],
             ['OK', '+CUSD: 1,"Something FNB bla bla FRB!",255'])
+        # respond with option 1
         yield self.assertExchange(
             ['AT+CUSD=1,"1",15'],
             ['OK', '+CUSD: 1,"Something with Cellphone number",255'])
+        # cancel the session
+        yield self.assertExchange(['AT+CUSD=2'], ['OK'])
         log = yield d
         self.assertEqual(log, [
             {
@@ -52,6 +56,10 @@ class MalvaTestCase(MalvaBaseTestCase):
                     'OK',
                     '+CUSD: 1,"Something with Cellphone number",255'
                 ]
+            }, {
+                'command': ['AT+CUSD=2'],
+                'expect': 'OK',
+                'response': ['OK']
             }
         ])
 
