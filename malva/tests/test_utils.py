@@ -1,18 +1,21 @@
-from twisted.trial.unittest import TestCase
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, succeed, Deferred
 from twisted.test import proto_helpers
 
 from malva.utils import ModemProbe
 
+from txgsm.tests.base import TxGSMBaseTestCase
+
 from serial.tools import list_ports
 
 
-class MalvaUtilTestCase(TestCase):
+class MalvaUtilTestCase(TxGSMBaseTestCase):
 
+    timeout = 1
     verbose = True
 
     def setUp(self):
+        super(MalvaUtilTestCase, self).setUp()
         self.patch(list_ports, 'comports', lambda: [
             # device, description, hardware-id
             ('/dev/ok', 'OK Modem', 'HARWARE_ID'),
@@ -45,45 +48,24 @@ class MalvaUtilTestCase(TestCase):
         checker()
         return d
 
-    def handle_dialogue(self, modem, transport, dialogue):
-
-        d = Deferred()
-
-        def check_for_input():
-            if not transport.value():
-                reactor.callLater(0, check_for_input)
-                return
-
-            for expected, responses in dialogue:
-                command = filter(None, transport.value().split(modem.delimiter))
-                self.assertEqual(command, [expected])
-                transport.clear()
-                for response in responses:
-                    modem.dataReceived(response + modem.delimiter)
-
-            d.callback(True)
-
-        check_for_input()
-        return d
-
     @inlineCallbacks
     def test_probing(self):
         # the time-out here is likely going to cause random test failures
         # because of CPU time differences per platform the tests are run on.
         # The fix is to fiddle with mocking the reactor's clock.
-        modem_probe = self.modem_probe.probe_ports(timeout=0.001)
+        modem_probe = self.modem_probe.probe_ports(timeout=0.01)
         ok_modem, ok_transport = yield self.wait_for_connection('/dev/ok')
         bad_modem, bad_transport = yield self.wait_for_connection('/dev/bad')
 
-        yield self.handle_dialogue(ok_modem, ok_transport, [
-            ('ATE0', ['OK']),
-            ('AT+CIMI', ['1234567890', 'OK']),
-            ('AT+CGMM', ['FOO CORP', 'OK']),
-        ])
+        yield self.assertExchange(['ATE0'], ['OK'],
+                                  modem=ok_modem, transport=ok_transport)
+        yield self.assertExchange(['AT+CIMI'], ['1234567890', 'OK'],
+                                  modem=ok_modem, transport=ok_transport)
+        yield self.assertExchange(['AT+CGMM'], ['FOO CORP', 'OK'],
+                                  modem=ok_modem, transport=ok_transport)
 
-        yield self.handle_dialogue(bad_modem, bad_transport, [
-            ('ATE0', ['FOO']),
-        ])
+        yield self.assertExchange(['ATE0'], ['FOO'],
+                                  modem=bad_modem, transport=bad_transport)
 
         # yield ok_probe_d
         # yield bad_probe_d
